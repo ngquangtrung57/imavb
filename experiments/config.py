@@ -56,9 +56,9 @@ PEAK_LAYERS = {
     "qwen3_omni": 30,
 }
 
-# ── PGLA probe layers (App F, Table 9 — may differ from probing peak) ───
+# ── PGLA probe layers
 PGLA_PEAK_LAYERS = {
-    "baichuan_omni": 10,   # probing peaks at L2, but PGLA uses L10 (Table 9)
+    "baichuan_omni": 10,
     "minicpm_o": 17,
     "ola": 14,
     "omnivinci": 14,
