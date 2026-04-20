@@ -30,7 +30,7 @@ import re
 import argparse
 import logging
 import asyncio
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 
 from tqdm import tqdm
 from vllm import SamplingParams
@@ -234,23 +234,6 @@ def format_segments_for_prompt(segment_captions: List[Dict]) -> str:
     return "\n\n".join(lines)
 
 
-def validate_unified_caption(unified_caption: str, num_segments: int) -> Tuple[bool, str]:
-    """Check that the unified caption contains all expected timestamp markers."""
-    expected = []
-    for i in range(num_segments):
-        start = i * 10
-        end = start + 10
-        expected.append(f"[{start}s-{end}s]")
-
-    found = [m for m in expected if m in unified_caption]
-    missing = [m for m in expected if m not in unified_caption]
-    coverage = len(found) / len(expected) if expected else 0
-
-    if missing:
-        return False, f"Missing {len(missing)}/{len(expected)} markers (coverage={coverage:.0%})"
-    return True, f"All {len(expected)} markers present"
-
-
 async def generate_single(
     engine: AsyncLLMEngine,
     tokenizer: Any,
@@ -306,62 +289,42 @@ async def process_video(
     last_start = int(segment_captions[-1]["start_time"])
     last_end = int(segment_captions[-1]["end_time"])
 
-    # Retry on incomplete output (missing timestamp markers). Prompt is unchanged.
-    max_retries = 3
-    unified_caption = None
-    valid = False
-    msg = ""
+    try:
+        all_segments_text = format_segments_for_prompt(segment_captions)
 
-    for attempt in range(1, max_retries + 1):
-        try:
-            all_segments_text = format_segments_for_prompt(segment_captions)
+        merge_prompt = MERGE_PROMPT.format(
+            all_segments=all_segments_text,
+            num_segments=num_segments,
+            last_start=last_start,
+            last_end=last_end,
+        )
 
-            merge_prompt = MERGE_PROMPT.format(
-                all_segments=all_segments_text,
-                num_segments=num_segments,
-                last_start=last_start,
-                last_end=last_end,
-            )
+        merge_messages = [
+            {"role": "system", "content": MERGE_SYSTEM_PROMPT},
+            {"role": "user", "content": merge_prompt},
+        ]
 
-            merge_messages = [
-                {"role": "system", "content": MERGE_SYSTEM_PROMPT},
-                {"role": "user", "content": merge_prompt},
-            ]
+        unified_caption = await generate_single(
+            engine, tokenizer, sampling_params,
+            merge_messages, f"{video_id}_merge",
+        )
 
-            unified_caption = await generate_single(
-                engine, tokenizer, sampling_params,
-                merge_messages, f"{video_id}_merge_attempt{attempt}"
-            )
+        logger.info(
+            f"  {video_id}: Merge complete, len={len(unified_caption)}"
+        )
 
-            logger.info(
-                f"  {video_id}: Merge complete (attempt {attempt}), len={len(unified_caption)}"
-            )
+        # Strip any preamble before first timestamp marker
+        first_marker = "[0s-10s]"
+        if first_marker in unified_caption:
+            marker_pos = unified_caption.index(first_marker)
+            if marker_pos > 50:
+                unified_caption = unified_caption[marker_pos:].strip()
 
-            # Strip any preamble before first timestamp marker
-            first_marker = "[0s-10s]"
-            if first_marker in unified_caption:
-                marker_pos = unified_caption.index(first_marker)
-                if marker_pos > 50:
-                    unified_caption = unified_caption[marker_pos:].strip()
-
-            valid, msg = validate_unified_caption(unified_caption, num_segments)
-            if valid:
-                break
-            elif attempt < max_retries:
-                logger.warning(
-                    f"  {video_id}: Incomplete (attempt {attempt}/{max_retries}) - {msg}, retrying..."
-                )
-            else:
-                logger.warning(
-                    f"  {video_id}: Incomplete after {max_retries} attempts - {msg}"
-                )
-
-        except Exception as e:
-            logger.error(f"Error processing {video_id} (attempt {attempt}): {e}")
-            import traceback
-            logger.error(traceback.format_exc())
-            if attempt == max_retries:
-                return False
+    except Exception as e:
+        logger.error(f"Error processing {video_id}: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return False
 
     output_data = {
         "video_id": video_id,
@@ -377,7 +340,7 @@ async def process_video(
         f.flush()
         os.fsync(f.fileno())
 
-    logger.info(f"Saved {video_id} ({msg})")
+    logger.info(f"Saved {video_id}")
     return True
 
 

@@ -334,11 +334,13 @@ class OmniVinciAdapter(BaseModelAdapter):
             {
                 "role": "user",
                 "content": [
-                    {"type": "video", "video": video_path},
+                    {"type": "video", "video": video_path, "num_video_frames": 50},
                     {"type": "text", "text": context},
                 ],
             },
         ]
+        if hasattr(self.model, "config"):
+            self.model.config.num_video_frames = 50
         vila_text = self.processor.apply_chat_template(
             message, add_generation_prompt=True, tokenize=False
         )
@@ -548,8 +550,8 @@ class BaichuanOmniAdapter(BaseModelAdapter):
     """Adapter for Baichuan-Omni-1.5.
 
     Baichuan-Omni's generate() does not support output_hidden_states, so we
-    register forward hooks on model.model.layers. Uses muted video + chunked
-    audio (via baichuan_audio_fix) to avoid OOM.
+    register forward hooks on model.model.layers. Uses the original video
+    (with audio) plus chunked audio (via baichuan_audio_fix) to avoid OOM.
     """
 
     def load(self) -> None:
@@ -584,10 +586,10 @@ class BaichuanOmniAdapter(BaseModelAdapter):
 
         context = self._format_question(sample)
 
-        muted_video, audio_chunks = prepare_baichuan_video_audio(
+        _, audio_chunks = prepare_baichuan_video_audio(
             video_path, self._baichuan_cache
         )
-        video_json = json.dumps({"path": muted_video, "type": "video"})
+        video_json = json.dumps({"path": video_path, "type": "video"})
         full_prompt = f"<video_start>{video_json}<video_end>"
         for audio_path in audio_chunks:
             audio_json = json.dumps({"path": audio_path})

@@ -394,11 +394,8 @@ def analyze_model(
         sbert_embeddings = compute_sbert_embeddings(questions)
 
     # ── Masks for modality-specific analysis ─────────────────────────
-    # All standard samples as negatives + modality-specific misleading as positives
-    # (1:2 ratio, matching linear_probing.py and paper §4.2)
-    is_standard = y == 0
-    vis_mask = is_standard | ((y == 1) & (modalities == "vision"))
-    aud_mask = is_standard | ((y == 1) & (modalities == "audio"))
+    vis_mask = modalities == "vision"
+    aud_mask = modalities == "audio"
 
     results = {
         "model": model_name,

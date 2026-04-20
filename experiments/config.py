@@ -58,7 +58,7 @@ PEAK_LAYERS = {
 
 # ── PGLA probe layers
 PGLA_PEAK_LAYERS = {
-    "baichuan_omni": 10,
+    "baichuan_omni": 2,
     "minicpm_o": 17,
     "ola": 14,
     "omnivinci": 14,
