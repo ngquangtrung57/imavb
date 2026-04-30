@@ -65,8 +65,8 @@ from model_adapters import ADAPTER_REGISTRY, MODEL_DEFAULTS, get_adapter  # noqa
 # ---------------------------------------------------------------------------
 
 VIDEO_CACHE_DIR = os.getenv(
-    "OMNI_ROBUST_VIDEO_CACHE",
-    "<SET_PATH>/cache/huggingface/omni_robust_bench_videos",
+    "IMAVB_VIDEO_CACHE",
+    "<SET_PATH>/cache/huggingface/imavb_bench_videos",
 )
 
 

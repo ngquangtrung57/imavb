@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-IMAVB QA Generation — single-pass generation.
+IMAVB QA Generation -- single-pass generation.
 
 Generates 4 question variants per video in a 2x2 design:
   - Q_std_v  : standard vision question (correct premise, visible answer)
@@ -94,33 +94,33 @@ QUESTION_FOCUS_CATEGORIES = [
 
 
 ###################################################################################################
-# Prompts — Generator (paper §3.3 and Appendix H)
+# Prompts -- Generator (paper §3.3 and Appendix H)
 ###################################################################################################
 
 SYSTEM_PROMPT = """\
 You create benchmark questions to test whether video understanding models truly \
 watch the video or just guess from text patterns.
 
-QUESTION FORMAT — each question is one sentence with two parts:
+QUESTION FORMAT -- each question is one sentence with two parts:
   PREMISE (describes a specific scene moment) + QUESTION (asks one detail)
 
 Example: "When the man in the red jacket sits down at the table, what does he pick up first?"
          ^^^^^^^^^^^^^^^^ premise ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^ question ^^^^^^^^^^^^
 
 THE 4 VARIANTS you must create:
-  Q_std_v — correct premise + vision question (answer = something you SEE)
-  Q_mis_v — premise with ONE wrong visual detail + SAME vision question
-  Q_std_a — correct premise + audio question (answer = something you HEAR)
-  Q_mis_a — premise with ONE wrong audio detail + SAME audio question
+  Q_std_v -- correct premise + vision question (answer = something you SEE)
+  Q_mis_v -- premise with ONE wrong visual detail + SAME vision question
+  Q_std_a -- correct premise + audio question (answer = something you HEAR)
+  Q_mis_a -- premise with ONE wrong audio detail + SAME audio question
 
 RULES (violating ANY of these makes the output invalid):
 
-1) MODALITY — the question part determines the modality.
+1) MODALITY -- the question part determines the modality.
    Vision = answer is visible: gesture, position, object, expression, movement, color, clothing.
    Audio  = answer is audible: spoken words, sounds, music, tone of voice, volume.
    The premise CAN mention both audio+visual to set context.
-   WRONG vision Q: "what does he shout?" → shouting is audio.
-   WRONG audio Q: "what gesture does he make?" → gesture is visual.
+   WRONG vision Q: "what does he shout?" -> shouting is audio.
+   WRONG audio Q: "what gesture does he make?" -> gesture is visual.
 
 2) MISLEADING = SIMPLE SWAP.
    Write Q_std first, then COPY it to Q_mis and change exactly ONE detail in the premise.
@@ -130,31 +130,31 @@ RULES (violating ANY of these makes the output invalid):
    Good:
      Q_std_v: "When the man in the RED jacket sits at the table, what does he pick up?"
      Q_mis_v: "When the man in the BLUE jacket sits at the table, what does he pick up?"
-     (Only RED→BLUE changed. Rest is identical.)
+     (Only RED->BLUE changed. Rest is identical.)
 
-   Bad — question part changed:
+   Bad -- question part changed:
      Q_std_a: "After the glass shatters, what sound cuts through the air?"
      Q_mis_a: "After the glass shatters, what soft piano melody cuts through the air?"
      (WRONG: "sound" was replaced with "soft piano melody" in the question part.)
 
-3) PREMISE SPECIFICITY — must pinpoint ONE moment.
+3) PREMISE SPECIFICITY -- must pinpoint ONE moment.
    Include: timestamp [Xs-Ys], character-identifying details, specific action.
-   Bad: "When the man walks" — too vague.
+   Bad: "When the man walks" -- too vague.
    Good: "At [20s-30s], when the tall man in the gray suit pauses at the doorway"
 
-4) TIMESTAMPS — use [Xs-Ys] from the caption's 10-second segments.
+4) TIMESTAMPS -- use [Xs-Ys] from the caption's 10-second segments.
    answer_timestamp = the exact segment where the ANSWER appears in the caption.
    Double-check against the caption text.
 
-5) CHOICES — all 4 choices (A/B/C/D) must be UNIQUE and DIFFERENT from each other.
+5) CHOICES -- all 4 choices (A/B/C/D) must be UNIQUE and DIFFERENT from each other.
    No two choices can have the same text. The correct answer must directly match
-   something stated in the caption — do not ask for details the caption does not describe.
+   something stated in the caption -- do not ask for details the caption does not describe.
 
-6) ANSWER GROUNDING — the correct answer must be a fact DIRECTLY stated in the caption.
+6) ANSWER GROUNDING -- the correct answer must be a fact DIRECTLY stated in the caption.
    Do NOT ask about details the caption does not mention (e.g., do not ask "what color"
    if the caption only says "large" without naming a color).
 
-7) NO ANSWER IN PREMISE — the standard question's premise must NOT contain the answer.
+7) NO ANSWER IN PREMISE -- the standard question's premise must NOT contain the answer.
    The premise sets the scene; the question asks for a DIFFERENT detail from that moment.
    Bad: premise "man in red jacket" + question "what color is his jacket?" (answer in premise)
    Good: premise "man in red jacket sits at table" + question "what does he pick up?" """
@@ -166,10 +166,11 @@ QA_GENERATION_PROMPT = """\
 === END CAPTION ===
 
 Create 4 question variants. Correct answer at position {correct_position}.
+Question focus (target this reasoning type): {question_focus}
 Vision misleading category (pick one): {vision_categories}
 Audio misleading category (pick one): {audio_categories}
 
-CRITICAL RULES — your output will be rejected if any are violated:
+CRITICAL RULES -- your output will be rejected if any are violated:
 - Q_mis_v must be a COPY of Q_std_v with exactly ONE detail swapped in the premise. \
 The question part must be word-for-word identical.
 - Q_mis_a must be a COPY of Q_std_a with exactly ONE detail swapped in the premise. \
@@ -457,12 +458,14 @@ async def generate_qa(
     correct_position: str,
     vision_cats: List[str],
     audio_cats: List[str],
+    question_focus: str,
     req_suffix: str = "",
 ) -> Optional[Dict[str, Any]]:
     """Run the generator and return a parsed, validated QA dict, or None on failure."""
     prompt = QA_GENERATION_PROMPT.format(
         unified_caption=caption,
         correct_position=correct_position,
+        question_focus=question_focus,
         vision_categories=format_categories(vision_cats),
         audio_categories=format_categories(audio_cats),
     )
@@ -501,7 +504,7 @@ async def process_video(
 
     qa = await generate_qa(
         engine, tokenizer, gen_params, video_id, caption,
-        correct_position, vision_cats, audio_cats,
+        correct_position, vision_cats, audio_cats, question_focus,
     )
     if qa is None:
         logger.warning(f"{video_id}: Generation failed (no valid JSON)")
@@ -589,7 +592,7 @@ async def process_video(
 ###################################################################################################
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="IMAVB QA Generation — single-pass")
+    p = argparse.ArgumentParser(description="IMAVB QA Generation -- single-pass")
     p.add_argument(
         "--caption-dir",
         default="<SET_PATH>",
@@ -624,7 +627,7 @@ def main(args: argparse.Namespace) -> None:
 
     logger = setup_logging(output_dir, verbose=verbose)
     logger.info("=" * 70)
-    logger.info("IMAVB QA Generation — single-pass")
+    logger.info("IMAVB QA Generation -- single-pass")
     logger.info("=" * 70)
     logger.info(f"Model      : {args.model}")
     logger.info(f"Caption dir: {args.caption_dir}")

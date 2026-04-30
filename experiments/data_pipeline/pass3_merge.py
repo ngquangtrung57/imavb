@@ -10,7 +10,7 @@ Deduplication contract:
   - Opening [0s-10s] segment establishes setting, character appearances, and
     ambient sounds once and for all.
   - Continuation segments describe only what is NEW: actions, new dialogue,
-    changes to scene. Characters are referred to by pronouns or names — never
+    changes to scene. Characters are referred to by pronouns or names -- never
     by clothing or hair after the first description.
 
 Input:
@@ -90,7 +90,7 @@ MERGE_PROMPT = """You are writing a chapter of a novel based on a video. The vid
 ## YOUR TASK:
 Rewrite these as a single flowing narrative with [0s-10s] through [{last_start}s-{last_end}s] timestamp markers. Remove ALL repeated descriptions while preserving the timeline.
 
-**CRITICAL STRUCTURE — THE OPENING vs CONTINUATION RULE:**
+**CRITICAL STRUCTURE -- THE OPENING vs CONTINUATION RULE:**
 - **[0s-10s] (OPENING)**: Establish everything once and for all:
   - **Setting**: Full room/location description (walls, floor, furniture, lighting, windows, decor). This is the ONLY segment where you describe the space.
   - **Characters**: Every person's complete appearance (clothing from head to toe, hair color/style, distinguishing features, accessories). This is the ONLY segment where you describe what they're wearing.
@@ -99,45 +99,45 @@ Rewrite these as a single flowing narrative with [0s-10s] through [{last_start}s
 - **[10s-20s] through [{last_start}s-{last_end}s] (CONTINUATION)**: Write ONLY what is NEW:
   - **Actions and movements** (walking, gesturing, picking up objects)
   - **New dialogue** (each spoken line appears ONCE, in the segment where it first occurs)
-  - **Changes to the scene** (new character enters → describe them once; light turns off → mention it; music stops → mention it)
+  - **Changes to the scene** (new character enters -> describe them once; light turns off -> mention it; music stops -> mention it)
   - **Use pronouns/names for characters**: "he", "she", "they", character names, or role labels ("the host", "the driver"). NEVER use clothing or hair as identifiers.
 
 **DEDUPLICATION EXAMPLES:**
 
-❌ **BAD (repeating setting):**
+**BAD (repeating setting):**
 "[0s-10s] The couple sits in a dimly lit living room with cream-colored walls and a burgundy sofa. [10s-20s] They continue talking in the dimly lit living room with cream-colored walls. [20s-30s] The conversation unfolds in the same dimly lit space with burgundy furniture."
 
-✅ **GOOD (setting described once):**
+**GOOD (setting described once):**
 "[0s-10s] The couple sits in a dimly lit living room with cream-colored walls and a burgundy sofa. [10s-20s] They continue talking, leaning closer. [20s-30s] She gestures toward the window as he nods."
 
 ---
 
-❌ **BAD (repeating character appearance):**
+**BAD (repeating character appearance):**
 "[0s-10s] A woman in a red jacket and blonde hair speaks. [10s-20s] The woman in the red jacket nods. [20s-30s] The blonde woman in the red jacket smiles."
 
-✅ **GOOD (appearance described once, pronouns after):**
+**GOOD (appearance described once, pronouns after):**
 "[0s-10s] A woman in a red jacket, her blonde hair pulled back, speaks into the microphone. [10s-20s] She nods, leaning forward. [20s-30s] She smiles and glances at the audience."
 
 ---
 
-❌ **BAD (repeating ambient sound):**
+**BAD (repeating ambient sound):**
 "[0s-10s] Piano music plays softly in the background. [10s-20s] The piano continues its gentle melody. [20s-30s] Soft piano notes fill the air. [30s-40s] The piano music persists."
 
-✅ **GOOD (ambient sound mentioned once):**
+**GOOD (ambient sound mentioned once):**
 "[0s-10s] Piano music plays softly in the background. [10s-20s] She opens the envelope and pulls out a letter. [20s-30s] She reads silently, her expression shifting. [30s-40s] She sets the letter down and exhales."
 
 ---
 
-❌ **BAD (repeating dialogue):**
+**BAD (repeating dialogue):**
 "[20s-30s] He says, 'Where did you go?' [30s-40s] 'Where did you go?' he asks again."
 
-✅ **GOOD (dialogue appears once):**
+**GOOD (dialogue appears once):**
 "[20s-30s] He says, 'Where did you go?' [30s-40s] She hesitates, then looks away without answering."
 
 **OTHER RULES:**
 1. ALL {num_segments} timestamp markers must appear: [0s-10s], [10s-20s], ..., [{last_start}s-{last_end}s]. Never skip or combine.
 2. Each segment includes both visual AND audio details.
-3. Each segment continues from where the previous ended — flowing narrative, not independent paragraphs.
+3. Each segment continues from where the previous ended -- flowing narrative, not independent paragraphs.
 4. NEVER mention technical terms: "the audio model", "the vision model", "the caption", "recording equipment", audio engineering vocabulary (reverb, fidelity, stereo field, sub-bass, frequency, HVAC, soundscape, etc.)
 
 Begin writing with [0s-10s]:"""
@@ -262,7 +262,7 @@ async def generate_single(
 
 
 ###################################################################################################
-# Main Processing — single-shot global merge
+# Main Processing -- single-shot global merge
 ###################################################################################################
 
 async def process_video(

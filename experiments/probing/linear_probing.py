@@ -27,7 +27,7 @@ import numpy as np
 import torch
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.preprocessing import StandardScaler
 
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -84,6 +84,7 @@ def extract_arrays(
     y_list = []
     modality_list = []
     question_list = []
+    video_id_list = []
 
     # Track per-sample layer counts for safety
     layer_counts = []
@@ -94,6 +95,7 @@ def extract_arrays(
         split = s["metadata"].get("split", "")
         modality_list.append("vision" if "vision" in split else "audio")
         question_list.append(s["metadata"].get("question", ""))
+        video_id_list.append(s["metadata"].get("video_id", ""))
 
     # Truncate all samples to the minimum layer count (handles variable-depth models)
     min_layers = min(layer_counts)
@@ -102,22 +104,23 @@ def extract_arrays(
     hs = np.stack(hs_trunc, axis=0)  # (N, n_layers, hidden_dim)
     y = np.array(y_list, dtype=int)
     modalities = np.array(modality_list)
+    video_ids = np.array(video_id_list)
 
-    return hs, y, modalities, question_list
+    return hs, y, modalities, question_list, video_ids
 
 
 # ── Probe helpers ──────────────────────────────────────────────────────────
 
-def _run_cv_probe(X: np.ndarray, y: np.ndarray) -> dict:
+def _run_cv_probe(X: np.ndarray, y: np.ndarray, groups: np.ndarray) -> dict:
     """
-    4-fold stratified CV probe. StandardScaler fit on train per fold.
+    4-fold stratified group CV probe (grouped by video). StandardScaler fit on train per fold.
 
     Returns:
         mean, std, per_fold accuracies, peak layer index (caller resolves).
     """
-    skf = StratifiedKFold(n_splits=N_FOLDS, shuffle=True, random_state=RANDOM_STATE)
+    sgkf = StratifiedGroupKFold(n_splits=N_FOLDS, shuffle=True, random_state=RANDOM_STATE)
     fold_accs = []
-    for train_idx, test_idx in skf.split(X, y):
+    for train_idx, test_idx in sgkf.split(X, y, groups=groups):
         scaler = StandardScaler()
         X_tr = scaler.fit_transform(X[train_idx])
         X_te = scaler.transform(X[test_idx])
@@ -131,26 +134,26 @@ def _run_cv_probe(X: np.ndarray, y: np.ndarray) -> dict:
     }
 
 
-def run_layerwise_probe(hs: np.ndarray, y: np.ndarray) -> list[dict]:
+def run_layerwise_probe(hs: np.ndarray, y: np.ndarray, groups: np.ndarray) -> list[dict]:
     """Train probe at every layer. Returns list of result dicts (one per layer)."""
     n_layers = hs.shape[1]
     results = []
     for layer_idx in range(n_layers):
-        result = _run_cv_probe(hs[:, layer_idx, :], y)
+        result = _run_cv_probe(hs[:, layer_idx, :], y, groups)
         results.append(result)
     return results
 
 
-def run_tfidf_baseline(questions: list[str], y: np.ndarray) -> dict:
+def run_tfidf_baseline(questions: list[str], y: np.ndarray, groups: np.ndarray) -> dict:
     """
     TF-IDF text-only baseline. TfidfVectorizer fit per fold to avoid leakage.
 
     Per §4.2: TfidfVectorizer(max_features=5000), fit inside each fold.
     """
-    skf = StratifiedKFold(n_splits=N_FOLDS, shuffle=True, random_state=RANDOM_STATE)
+    sgkf = StratifiedGroupKFold(n_splits=N_FOLDS, shuffle=True, random_state=RANDOM_STATE)
     questions_arr = np.array(questions)
     fold_accs = []
-    for train_idx, test_idx in skf.split(questions_arr, y):
+    for train_idx, test_idx in sgkf.split(questions_arr, y, groups=groups):
         tfidf = TfidfVectorizer(max_features=TFIDF_MAX_FEATURES)
         X_tr = tfidf.fit_transform(questions_arr[train_idx]).toarray()
         X_te = tfidf.transform(questions_arr[test_idx]).toarray()
@@ -190,14 +193,14 @@ def analyze_model(model_name: str) -> dict:
         print(f"  ERROR: no samples found — skipping")
         return {}
 
-    hs, y, modalities, questions = extract_arrays(samples)
+    hs, y, modalities, questions, video_ids = extract_arrays(samples)
     n, n_layers, hidden_dim = hs.shape
     print(f"  Loaded: {n} samples, {n_layers} layers, hidden_dim={hidden_dim}")
     print(f"  Misleading: {y.sum()}/{n}  Standard: {(1-y).sum()}/{n}")
 
     # ── 1. Global probe at every layer ────────────────────────────────
     print(f"\n  [1/4] Global layerwise probe ({N_FOLDS}-fold CV)...")
-    global_layer_results = run_layerwise_probe(hs, y)
+    global_layer_results = run_layerwise_probe(hs, y, video_ids)
     peak_layer = int(np.argmax([r["mean"] for r in global_layer_results]))
     peak_acc = global_layer_results[peak_layer]["mean"]
     peak_std = global_layer_results[peak_layer]["std"]
@@ -217,12 +220,12 @@ def analyze_model(model_name: str) -> dict:
 
     print(f"\n  [2/4] Vision-specific probe at layer {peak_layer}...")
     print(f"    Samples: std={std_mask.sum()}, mis_v={vis_misleading_mask.sum()}")
-    vision_result = _run_cv_probe(hs_peak[vis_mask], y[vis_mask])
+    vision_result = _run_cv_probe(hs_peak[vis_mask], y[vis_mask], video_ids[vis_mask])
     print(f"    acc={vision_result['mean']:.3f} ± {vision_result['std']:.3f}")
 
     print(f"\n  [3/4] Audio-specific probe at layer {peak_layer}...")
     print(f"    Samples: std={std_mask.sum()}, mis_a={aud_misleading_mask.sum()}")
-    audio_result = _run_cv_probe(hs_peak[aud_mask], y[aud_mask])
+    audio_result = _run_cv_probe(hs_peak[aud_mask], y[aud_mask], video_ids[aud_mask])
     print(f"    acc={audio_result['mean']:.3f} ± {audio_result['std']:.3f}")
 
     # ── 3. TF-IDF baselines ───────────────────────────────────────────
@@ -230,11 +233,13 @@ def analyze_model(model_name: str) -> dict:
 
     vis_questions = [q for q, m in zip(questions, modalities) if m == "vision"]
     vis_y = y[modalities == "vision"]
+    vis_video_ids = video_ids[modalities == "vision"]
     aud_questions = [q for q, m in zip(questions, modalities) if m == "audio"]
     aud_y = y[modalities == "audio"]
+    aud_video_ids = video_ids[modalities == "audio"]
 
-    tfidf_vision = run_tfidf_baseline(vis_questions, vis_y)
-    tfidf_audio = run_tfidf_baseline(aud_questions, aud_y)
+    tfidf_vision = run_tfidf_baseline(vis_questions, vis_y, vis_video_ids)
+    tfidf_audio = run_tfidf_baseline(aud_questions, aud_y, aud_video_ids)
     print(f"    TF-IDF vision: {tfidf_vision['mean']:.3f} ± {tfidf_vision['std']:.3f}")
     print(f"    TF-IDF audio:  {tfidf_audio['mean']:.3f} ± {tfidf_audio['std']:.3f}")
 
@@ -364,7 +369,7 @@ def main() -> None:
             f"Unknown model '{args.model}'. Available: {', '.join(MODELS)}"
         )
 
-    print(f"Linear Probing — {N_FOLDS}-fold stratified CV")
+    print(f"Linear Probing — {N_FOLDS}-fold stratified group CV (grouped by video)")
     print(f"Models: {models}")
     print(f"Output: {args.output}")
 

@@ -109,7 +109,7 @@ def _gpu_extract_frames_ffmpeg(path, start_time, end_time, num_frames=10):
     tmp_dir = tempfile.mkdtemp(prefix="frames_")
     out_pattern = os.path.join(tmp_dir, "frame_%05d.png")
     duration = end_time - start_time
-    fps = (num_frames - 1) / duration if duration > 0 else 1.0
+    fps = num_frames / duration if duration > 0 else 1.0
 
     try:
         gpu_devices = []

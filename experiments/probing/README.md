@@ -7,7 +7,7 @@
 Trains logistic regression probes on hidden states to detect misleading inputs.
 
 **Protocol (matches paper exactly):**
-- 4-fold stratified CV (`StratifiedKFold(n_splits=4, shuffle=True, random_state=42)`)
+- 4-fold stratified CV (`StratifiedGroupKFold(n_splits=4, shuffle=True, random_state=42)`)
 - `LogisticRegression(C=1.0, solver='lbfgs', max_iter=1000)`
 - `StandardScaler` fit on train fold, applied to test fold
 - Binary target: 0 = standard (std_v + std_a), 1 = misleading (mis_v + mis_a)

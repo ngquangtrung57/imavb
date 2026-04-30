@@ -38,7 +38,7 @@ import numpy as np
 import torch
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression, Ridge
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.preprocessing import StandardScaler
 
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -79,7 +79,7 @@ def load_hidden_states(model_name: str) -> list[dict]:
 
 
 def extract_arrays(samples: list[dict]):
-    """Extract hidden states, labels, questions, and split info from samples."""
+    """Extract hidden states, labels, questions, split info, and video ids from samples."""
     hs_list = [s["hidden_states"].float().numpy() for s in samples]
     hs = np.stack(hs_list, axis=0)  # (N, n_layers, hidden_dim)
 
@@ -98,7 +98,9 @@ def extract_arrays(samples: list[dict]):
             modalities.append("audio")
     modalities = np.array(modalities)
 
-    return hs, is_misleading, questions, modalities
+    video_ids = np.array([s["metadata"].get("video_id", "") for s in samples])
+
+    return hs, is_misleading, questions, modalities, video_ids
 
 
 # ── Text Features ────────────────────────────────────────────────────────
@@ -117,22 +119,31 @@ def compute_sbert_embeddings(questions: list[str]) -> np.ndarray:
 def run_tfidf_cv_probing(
     questions: list[str],
     y: np.ndarray,
+    groups: np.ndarray,
     n_folds: int = N_FOLDS,
 ) -> dict:
-    """Run TF-IDF probing with per-fold fit to avoid vocabulary leakage."""
-    skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=RANDOM_STATE)
+    """Run TF-IDF probing with per-fold fit to avoid vocabulary leakage.
+
+    Returns mean, std, per-fold accuracies, and the per-sample held-out
+    predictions assembled across folds.
+    """
+    sgkf = StratifiedGroupKFold(n_splits=n_folds, shuffle=True, random_state=RANDOM_STATE)
     fold_accs = []
     questions_arr = np.array(questions)
-    for train_idx, test_idx in skf.split(questions_arr, y):
+    all_preds = np.full(len(y), -1, dtype=int)
+    for train_idx, test_idx in sgkf.split(questions_arr, y, groups=groups):
         tfidf = TfidfVectorizer(max_features=5000)
         X_tr = tfidf.fit_transform(questions_arr[train_idx]).toarray()
         X_te = tfidf.transform(questions_arr[test_idx]).toarray()
-        acc = train_and_eval_probe(X_tr, y[train_idx], X_te, y[test_idx])
+        acc, preds = train_and_eval_probe(X_tr, y[train_idx], X_te, y[test_idx])
         fold_accs.append(acc)
+        all_preds[test_idx] = preds
     return {
         "mean": float(np.mean(fold_accs)),
         "std": float(np.std(fold_accs, ddof=1)),
         "per_fold": [float(a) for a in fold_accs],
+        "all_preds": all_preds.tolist(),
+        "all_labels": np.asarray(y).tolist(),
     }
 
 
@@ -200,33 +211,45 @@ def train_and_eval_probe(
     y_train: np.ndarray,
     X_test: np.ndarray,
     y_test: np.ndarray,
-) -> float:
-    """Train logistic regression probe, return test accuracy."""
+) -> tuple[float, np.ndarray]:
+    """Train logistic regression probe; return (test_accuracy, test_predictions)."""
     clf = LogisticRegression(
         max_iter=1000, C=1.0, solver="lbfgs", random_state=RANDOM_STATE
     )
     clf.fit(X_train, y_train)
-    return float(clf.score(X_test, y_test))
+    preds = clf.predict(X_test)
+    acc = float((preds == y_test).mean())
+    return acc, preds
 
 
 def run_cv_probing(
     X: np.ndarray,
     y: np.ndarray,
+    groups: np.ndarray,
     n_folds: int = N_FOLDS,
 ) -> dict:
-    """Run stratified k-fold CV probing. Returns mean, std, per-fold accuracies."""
-    skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=RANDOM_STATE)
+    """Run stratified group k-fold CV probing (grouped by video).
+
+    Returns mean, std, per-fold accuracies, and the per-sample held-out
+    predictions assembled across folds (each sample appears in exactly one
+    held-out fold under k-fold CV).
+    """
+    sgkf = StratifiedGroupKFold(n_splits=n_folds, shuffle=True, random_state=RANDOM_STATE)
     fold_accs = []
-    for train_idx, test_idx in skf.split(X, y):
+    all_preds = np.full(len(y), -1, dtype=int)
+    for train_idx, test_idx in sgkf.split(X, y, groups=groups):
         scaler = StandardScaler()
         X_tr = scaler.fit_transform(X[train_idx])
         X_te = scaler.transform(X[test_idx])
-        acc = train_and_eval_probe(X_tr, y[train_idx], X_te, y[test_idx])
+        acc, preds = train_and_eval_probe(X_tr, y[train_idx], X_te, y[test_idx])
         fold_accs.append(acc)
+        all_preds[test_idx] = preds
     return {
         "mean": float(np.mean(fold_accs)),
         "std": float(np.std(fold_accs, ddof=1)),
         "per_fold": [float(a) for a in fold_accs],
+        "all_preds": all_preds.tolist(),
+        "all_labels": np.asarray(y).tolist(),
     }
 
 
@@ -234,19 +257,25 @@ def run_nested_residualized_probing(
     hs_at_layer: np.ndarray,
     y: np.ndarray,
     text_embeddings: np.ndarray,
+    groups: np.ndarray,
     n_folds: int = N_FOLDS,
 ) -> dict:
     """
-    Nested CV: residualization is fitted INSIDE each fold to avoid leakage.
+    Nested group CV: residualization is fitted INSIDE each fold (grouped by video) to avoid leakage.
 
     For each fold:
       1. Fit text projection on train fold
       2. Residualize train and test
       3. Train probe on residualized train, evaluate on residualized test
+
+    Returns mean, std, per-fold accuracies, and the per-sample held-out
+    predictions assembled across folds (each sample appears in exactly one
+    held-out fold under k-fold CV).
     """
-    skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=RANDOM_STATE)
+    sgkf = StratifiedGroupKFold(n_splits=n_folds, shuffle=True, random_state=RANDOM_STATE)
     fold_accs = []
-    for train_idx, test_idx in skf.split(hs_at_layer, y):
+    all_preds = np.full(len(y), -1, dtype=int)
+    for train_idx, test_idx in sgkf.split(hs_at_layer, y, groups=groups):
         h_train = hs_at_layer[train_idx]
         h_test = hs_at_layer[test_idx]
         text_train = text_embeddings[train_idx]
@@ -262,13 +291,16 @@ def run_nested_residualized_probing(
         h_test_res = scaler.transform(h_test_res)
 
         # Train probe on residualized hidden states
-        acc = train_and_eval_probe(h_train_res, y[train_idx], h_test_res, y[test_idx])
+        acc, preds = train_and_eval_probe(h_train_res, y[train_idx], h_test_res, y[test_idx])
         fold_accs.append(acc)
+        all_preds[test_idx] = preds
 
     return {
         "mean": float(np.mean(fold_accs)),
         "std": float(np.std(fold_accs, ddof=1)),
         "per_fold": [float(a) for a in fold_accs],
+        "all_preds": all_preds.tolist(),
+        "all_labels": np.asarray(y).tolist(),
     }
 
 
@@ -280,11 +312,14 @@ def bootstrap_paired_test(
     n_bootstrap: int = N_BOOTSTRAP,
 ) -> dict:
     """
-    Bootstrap test for whether method A > method B.
-    Uses the per-fold accuracies to compute confidence interval on the difference.
+    LEGACY: fold-level paired bootstrap.
 
-    For more power, we also do a sample-level bootstrap when fold predictions
-    are not available — here we use fold-level bootstrap (conservative but clean).
+    Bootstraps over per-fold accuracy differences (typically N=4 with 4-fold CV).
+    Mathematically cannot resolve p-values below 1/(N^N) (e.g., 1/256 for N=4),
+    so reported "p<1/B" claims at B=10,000 are not meaningful from this test.
+
+    Retained for backwards compatibility; new analyses should use
+    bootstrap_paired_sample_test (per-sample held-out predictions).
     """
     rng = np.random.RandomState(RANDOM_STATE)
     diffs = np.array(accs_a) - np.array(accs_b)
@@ -313,10 +348,98 @@ def bootstrap_paired_test(
     }
 
 
+def bootstrap_paired_sample_test(
+    preds_a,
+    preds_b,
+    y_true,
+    n_bootstrap: int = N_BOOTSTRAP,
+) -> dict:
+    """
+    Per-sample paired bootstrap test for whether method A's accuracy exceeds method B's.
+
+    Each input is a length-N array; preds_a[i] and preds_b[i] are the predictions
+    of methods A and B on the same held-out sample i (under k-fold CV with
+    non-overlapping test folds, every sample appears in exactly one held-out fold,
+    so the two prediction vectors are paired sample-by-sample).
+
+    Resamples N indices with replacement; the empirical p-value is the proportion
+    of resamples for which the mean per-sample correctness difference (A - B) is
+    non-positive. Reaches the B=10,000 resolution claimed in the paper because N
+    is on the order of 2,000 (the number of held-out IMAVB samples per cell).
+    """
+    preds_a = np.asarray(preds_a)
+    preds_b = np.asarray(preds_b)
+    y_true = np.asarray(y_true)
+    correct_a = (preds_a == y_true).astype(int)
+    correct_b = (preds_b == y_true).astype(int)
+    diffs = correct_a - correct_b  # length N
+
+    rng = np.random.RandomState(RANDOM_STATE)
+    n = len(diffs)
+    boot_means = np.empty(n_bootstrap)
+    for i in range(n_bootstrap):
+        idx = rng.choice(n, size=n, replace=True)
+        boot_means[i] = diffs[idx].mean()
+
+    observed_diff = float(diffs.mean())
+    ci_lower = float(np.percentile(boot_means, 2.5))
+    ci_upper = float(np.percentile(boot_means, 97.5))
+    p_raw = float(np.mean(boot_means <= 0))
+    p_value = max(p_raw, 1.0 / n_bootstrap)
+
+    return {
+        "observed_diff": observed_diff,
+        "ci_lower": ci_lower,
+        "ci_upper": ci_upper,
+        "n_samples": int(n),
+        "p_value_one_sided": p_value,
+        "p_display": f"p < {1.0/n_bootstrap:.4f}" if p_raw == 0 else f"p = {p_value:.4f}",
+    }
+
+
+def bootstrap_one_sample_above_threshold(
+    preds,
+    y_true,
+    threshold: float = 0.5,
+    n_bootstrap: int = N_BOOTSTRAP,
+) -> dict:
+    """
+    Per-sample one-sample bootstrap test for whether mean correctness exceeds a threshold.
+
+    Used for the "residualized probe > chance" sanity check; threshold defaults to 0.5.
+    """
+    preds = np.asarray(preds)
+    y_true = np.asarray(y_true)
+    correct = (preds == y_true).astype(float)
+
+    rng = np.random.RandomState(RANDOM_STATE)
+    n = len(correct)
+    boot_means = np.empty(n_bootstrap)
+    for i in range(n_bootstrap):
+        idx = rng.choice(n, size=n, replace=True)
+        boot_means[i] = correct[idx].mean()
+
+    observed = float(correct.mean())
+    ci_lower = float(np.percentile(boot_means, 2.5))
+    ci_upper = float(np.percentile(boot_means, 97.5))
+    p_raw = float(np.mean(boot_means <= threshold))
+    p_value = max(p_raw, 1.0 / n_bootstrap)
+
+    return {
+        "observed_diff": observed - threshold,
+        "ci_lower": ci_lower - threshold,
+        "ci_upper": ci_upper - threshold,
+        "n_samples": int(n),
+        "p_value_one_sided": p_value,
+        "p_display": f"p < {1.0/n_bootstrap:.4f}" if p_raw == 0 else f"p = {p_value:.4f}",
+    }
+
+
 def bootstrap_above_chance(
     hs_at_layer: np.ndarray,
     y: np.ndarray,
     text_embeddings: np.ndarray,
+    groups: np.ndarray,
     n_bootstrap: int = 1000,
 ) -> dict:
     """
@@ -331,7 +454,7 @@ def bootstrap_above_chance(
     for b in range(n_bootstrap):
         idx = rng.choice(n, size=n, replace=True)
         result = run_nested_residualized_probing(
-            hs_at_layer[idx], y[idx], text_embeddings[idx], n_folds=N_FOLDS
+            hs_at_layer[idx], y[idx], text_embeddings[idx], groups[idx], n_folds=N_FOLDS
         )
         boot_accs.append(result["mean"])
 
@@ -367,7 +490,7 @@ def analyze_model(
         print(f"  ERROR: No samples found for {model_name}")
         return {}
 
-    hs, y, questions, modalities = extract_arrays(samples)
+    hs, y, questions, modalities, video_ids = extract_arrays(samples)
     n, n_layers, hidden_dim = hs.shape
     print(f"  Samples: {n}, Layers: {n_layers}, Hidden dim: {hidden_dim}")
     print(f"  Misleading: {y.sum()}/{n} ({100*y.mean():.1f}%)")
@@ -379,7 +502,7 @@ def analyze_model(
         print("  Finding peak layer via original probes...")
         best_acc, best_layer = 0, 0
         for l in range(n_layers):
-            result = run_cv_probing(hs[:, l, :], y)
+            result = run_cv_probing(hs[:, l, :], y, video_ids)
             if result["mean"] > best_acc:
                 best_acc = result["mean"]
                 best_layer = l
@@ -408,9 +531,9 @@ def analyze_model(
     # ── 1. Original probe (sanity check) ─────────────────────────────
     print("\n  [1/5] Original probe (all, vision, audio)...")
     results["original_probe"] = {
-        "all": run_cv_probing(hs_peak, y),
-        "vision": run_cv_probing(hs_peak[vis_mask], y[vis_mask]),
-        "audio": run_cv_probing(hs_peak[aud_mask], y[aud_mask]),
+        "all": run_cv_probing(hs_peak, y, video_ids),
+        "vision": run_cv_probing(hs_peak[vis_mask], y[vis_mask], video_ids[vis_mask]),
+        "audio": run_cv_probing(hs_peak[aud_mask], y[aud_mask], video_ids[aud_mask]),
     }
     print(f"    All:    {results['original_probe']['all']['mean']:.3f} ± {results['original_probe']['all']['std']:.3f}")
     print(f"    Vision: {results['original_probe']['vision']['mean']:.3f} ± {results['original_probe']['vision']['std']:.3f}")
@@ -421,9 +544,9 @@ def analyze_model(
     vis_questions = [q for q, m in zip(questions, modalities) if m == "vision"]
     aud_questions = [q for q, m in zip(questions, modalities) if m == "audio"]
     results["tfidf_baseline"] = {
-        "all": run_tfidf_cv_probing(questions, y),
-        "vision": run_tfidf_cv_probing(vis_questions, y[vis_mask]),
-        "audio": run_tfidf_cv_probing(aud_questions, y[aud_mask]),
+        "all": run_tfidf_cv_probing(questions, y, video_ids),
+        "vision": run_tfidf_cv_probing(vis_questions, y[vis_mask], video_ids[vis_mask]),
+        "audio": run_tfidf_cv_probing(aud_questions, y[aud_mask], video_ids[aud_mask]),
     }
     print(f"    All:    {results['tfidf_baseline']['all']['mean']:.3f}")
     print(f"    Vision: {results['tfidf_baseline']['vision']['mean']:.3f}")
@@ -432,9 +555,9 @@ def analyze_model(
     # ── 3. Sentence-BERT text baseline ───────────────────────────────
     print("\n  [3/5] Sentence-BERT text baseline...")
     results["sbert_baseline"] = {
-        "all": run_cv_probing(sbert_embeddings, y),
-        "vision": run_cv_probing(sbert_embeddings[vis_mask], y[vis_mask]),
-        "audio": run_cv_probing(sbert_embeddings[aud_mask], y[aud_mask]),
+        "all": run_cv_probing(sbert_embeddings, y, video_ids),
+        "vision": run_cv_probing(sbert_embeddings[vis_mask], y[vis_mask], video_ids[vis_mask]),
+        "audio": run_cv_probing(sbert_embeddings[aud_mask], y[aud_mask], video_ids[aud_mask]),
     }
     print(f"    All:    {results['sbert_baseline']['all']['mean']:.3f}")
     print(f"    Vision: {results['sbert_baseline']['vision']['mean']:.3f}")
@@ -443,12 +566,12 @@ def analyze_model(
     # ── 4. Residualized probe ────────────────────────────────────────
     print("\n  [4/5] Residualized probe (nested CV)...")
     results["residualized_probe"] = {
-        "all": run_nested_residualized_probing(hs_peak, y, sbert_embeddings),
+        "all": run_nested_residualized_probing(hs_peak, y, sbert_embeddings, video_ids),
         "vision": run_nested_residualized_probing(
-            hs_peak[vis_mask], y[vis_mask], sbert_embeddings[vis_mask]
+            hs_peak[vis_mask], y[vis_mask], sbert_embeddings[vis_mask], video_ids[vis_mask]
         ),
         "audio": run_nested_residualized_probing(
-            hs_peak[aud_mask], y[aud_mask], sbert_embeddings[aud_mask]
+            hs_peak[aud_mask], y[aud_mask], sbert_embeddings[aud_mask], video_ids[aud_mask]
         ),
     }
     print(f"    All:    {results['residualized_probe']['all']['mean']:.3f} ± {results['residualized_probe']['all']['std']:.3f}")
@@ -458,37 +581,42 @@ def analyze_model(
     # ── 5. Bootstrap significance ────────────────────────────────────
     print("\n  [5/5] Bootstrap significance tests...")
 
-    # Test: original probe > SBERT baseline (per-fold paired test)
+    # Test: original probe > SBERT baseline (sample-level paired bootstrap)
     results["bootstrap"] = {}
-    results["bootstrap"]["original_vs_sbert"] = bootstrap_paired_test(
-        results["original_probe"]["all"]["per_fold"],
-        results["sbert_baseline"]["all"]["per_fold"],
+    results["bootstrap"]["original_vs_sbert"] = bootstrap_paired_sample_test(
+        results["original_probe"]["all"]["all_preds"],
+        results["sbert_baseline"]["all"]["all_preds"],
+        results["original_probe"]["all"]["all_labels"],
     )
     print(f"    Original vs SBERT: diff={results['bootstrap']['original_vs_sbert']['observed_diff']:.3f}, "
-          f"p={results['bootstrap']['original_vs_sbert']['p_value_one_sided']:.4f}")
+          f"p={results['bootstrap']['original_vs_sbert']['p_value_one_sided']:.4f} "
+          f"(N={results['bootstrap']['original_vs_sbert']['n_samples']})")
 
-    # Test: residualized probe > chance (fold-level)
-    res_folds = results["residualized_probe"]["all"]["per_fold"]
-    chance_folds = [0.5] * len(res_folds)
-    results["bootstrap"]["residualized_vs_chance"] = bootstrap_paired_test(
-        res_folds, chance_folds
+    # Test: residualized probe > chance (sample-level one-sample bootstrap)
+    results["bootstrap"]["residualized_vs_chance"] = bootstrap_one_sample_above_threshold(
+        results["residualized_probe"]["all"]["all_preds"],
+        results["residualized_probe"]["all"]["all_labels"],
+        threshold=0.5,
     )
     print(f"    Residualized vs chance: diff={results['bootstrap']['residualized_vs_chance']['observed_diff']:.3f}, "
-          f"p={results['bootstrap']['residualized_vs_chance']['p_value_one_sided']:.4f}")
+          f"p={results['bootstrap']['residualized_vs_chance']['p_value_one_sided']:.4f} "
+          f"(N={results['bootstrap']['residualized_vs_chance']['n_samples']})")
 
-    # Test: residualized probe > SBERT baseline
-    results["bootstrap"]["residualized_vs_sbert"] = bootstrap_paired_test(
-        res_folds,
-        results["sbert_baseline"]["all"]["per_fold"],
+    # Test: residualized probe > SBERT baseline (sample-level paired bootstrap)
+    results["bootstrap"]["residualized_vs_sbert"] = bootstrap_paired_sample_test(
+        results["residualized_probe"]["all"]["all_preds"],
+        results["sbert_baseline"]["all"]["all_preds"],
+        results["residualized_probe"]["all"]["all_labels"],
     )
     print(f"    Residualized vs SBERT: diff={results['bootstrap']['residualized_vs_sbert']['observed_diff']:.3f}, "
-          f"p={results['bootstrap']['residualized_vs_sbert']['p_value_one_sided']:.4f}")
+          f"p={results['bootstrap']['residualized_vs_sbert']['p_value_one_sided']:.4f} "
+          f"(N={results['bootstrap']['residualized_vs_sbert']['n_samples']})")
 
     # Full bootstrap for residualized above chance (expensive — optional)
     if do_bootstrap_above_chance:
         print("    Running full bootstrap (residualized > chance, 1000 iterations)...")
         results["bootstrap"]["residualized_full_bootstrap"] = bootstrap_above_chance(
-            hs_peak, y, sbert_embeddings, n_bootstrap=1000
+            hs_peak, y, sbert_embeddings, video_ids, n_bootstrap=1000
         )
         print(f"    Full bootstrap: {results['bootstrap']['residualized_full_bootstrap']['mean']:.3f} "
               f"[{results['bootstrap']['residualized_full_bootstrap']['ci_lower']:.3f}, "
@@ -500,9 +628,9 @@ def analyze_model(
         traj_original = []
         traj_residualized = []
         for l in range(n_layers):
-            orig = run_cv_probing(hs[:, l, :], y)
+            orig = run_cv_probing(hs[:, l, :], y, video_ids)
             resid = run_nested_residualized_probing(
-                hs[:, l, :], y, sbert_embeddings
+                hs[:, l, :], y, sbert_embeddings, video_ids
             )
             traj_original.append(orig["mean"])
             traj_residualized.append(resid["mean"])
@@ -586,7 +714,7 @@ def main():
     # Load one model to get question texts
     print("\nPre-computing text features from first model's questions...")
     first_samples = load_hidden_states(models[0])
-    _, _, questions, _ = extract_arrays(first_samples)
+    _, _, questions, _, _ = extract_arrays(first_samples)
     sbert_embeddings = compute_sbert_embeddings(questions)
 
     # Verify questions are the same across models (they should be — same 2000 samples)
@@ -596,7 +724,7 @@ def main():
     for model in models:
         # Load this model's samples to check question alignment
         samples = load_hidden_states(model)
-        _, _, model_questions, _ = extract_arrays(samples)
+        _, _, model_questions, _, _ = extract_arrays(samples)
 
         # Check if questions match (same ordering)
         if len(model_questions) == len(questions) and model_questions == questions:

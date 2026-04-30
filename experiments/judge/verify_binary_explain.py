@@ -187,7 +187,7 @@ def _try_fix_truncated_json(text: str) -> dict | None:
             return None
         text = text[idx:]
 
-    for suffix in ['"}', '"}'  , '"}'  , '"}'  , '"}'  ]:
+    for suffix in ['"}', '}', '"', '"}}', '}}']:
         try:
             parsed = json.loads(text + suffix)
             if _validate_judge_json(parsed):
