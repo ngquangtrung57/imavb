@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Extract and save LM head weights needed for logit lens (§4.2).
+Extract and save LM head weights needed for logit lens (§4.3).
 
 Saves two files to <lm_weights_root>/<model>/:
     norm_weights.pt    — final RMSNorm scale parameter {"weight": tensor(hidden_dim,)}
@@ -156,7 +156,7 @@ def extract_and_save(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Extract LM head weights for logit lens (§4.2)."
+        description="Extract LM head weights for logit lens (§4.3)."
     )
     parser.add_argument(
         "--model",

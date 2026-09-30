@@ -43,7 +43,7 @@ from tqdm import tqdm
 
 
 ###################################################################################################
-# Prompts (from IMAVB paper Appendix H, "Level-1 Vision Caption")
+# Prompts (from IMAVB paper Appendix I, "Level-1 Vision Caption")
 ###################################################################################################
 
 VISION_SYSTEM_PROMPT = ""

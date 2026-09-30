@@ -4,7 +4,7 @@ IMAVB Annotation Pipeline - Pass 3: Sequential Narrative Unification
 
 Qwen3.5-27B performs a single-shot global merge of all enhanced segment captions
 (from Pass 2) into one unified, deduplicated, timestamped narrative per video,
-resolving remaining inter-segment inconsistencies (paper Section 3.2).
+resolving remaining inter-segment inconsistencies (paper §2.2).
 
 Deduplication contract:
   - Opening [0s-10s] segment establishes setting, character appearances, and

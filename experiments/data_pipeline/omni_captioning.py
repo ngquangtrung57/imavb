@@ -4,7 +4,7 @@ IMAVB Data Pipeline - Pass 1 Omni Captioning
 Uses Qwen3-Omni-30B-A3B-Thinking via vLLM AsyncLLMEngine to generate unified
 captions for 10-second video segments combining visual frames + audio.
 
-Two prompt modes (from IMAVB paper Appendix H):
+Two prompt modes (from IMAVB paper Appendix I):
   - FIRST_SEGMENT_PROMPT:   no prior context (segment index 0)
   - CONTEXT_SEGMENT_PROMPT: injects previous segment caption for continuity
 
@@ -62,7 +62,7 @@ VIDEO_NUM_FRAMES = 10        # Frames per 10s segment at 1fps
 
 
 ###################################################################################################
-# Prompts (from IMAVB paper Appendix H, "Pass 1")
+# Prompts (from IMAVB paper Appendix I, "Pass 1")
 ###################################################################################################
 
 SYSTEM_PROMPT = (

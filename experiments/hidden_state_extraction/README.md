@@ -9,7 +9,7 @@ For each sample in the IMAVB benchmark, the script:
 1. Loads a model via one of the eight model adapters in `model_adapters.py`
 2. Prepares inputs: 50 uniformly sampled video frames + full audio at 16 kHz mono
 3. Runs a forward/generate pass with forward hooks registered on every decoder
-   layer via `register_forward_hook()` (per paper Appendix L)
+   layer via `register_forward_hook()` (per paper Appendix J)
 4. Captures the last-token hidden state `h[:, -1, :]` from each layer during the
    prefill pass
 5. Saves one `.pt` file per sample with shape `(num_layers, hidden_dim)`
@@ -39,7 +39,7 @@ Files are organized as:
 ```
 
 Also saves `norm_weights.pt` and `lm_head_weights.pt` to `{model}/` for logit
-lens projections (Appendix L: "Logit lens projections apply RMSNorm followed by
+lens projections (Appendix J: "Logit lens projections apply RMSNorm followed by
 the LM head at each layer").
 
 ---

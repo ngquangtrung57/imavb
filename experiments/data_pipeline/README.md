@@ -26,7 +26,7 @@ python vision_captioning.py \
 Produces one JSON per video containing per-segment vision-only captions.
 GPT-4o receives 10 frames (1 fps) per 10-second segment.
 
-Prompt (paper Appendix H, "Level-1 Vision Caption"):
+Prompt (paper Appendix I, "Level-1 Vision Caption"):
 ```
 Describe this 10-second video clip.
 
@@ -46,7 +46,7 @@ python audio_captioning.py \
 
 Produces per-segment audio-only captions. The model receives only the mono
 audio track for each 10-second segment; no explicit text prompt is used
-(paper Appendix H, "Level-1 Audio Caption").
+(paper Appendix I, "Level-1 Audio Caption").
 
 ### Step 1c — Omni Captions (Qwen3-Omni-30B-A3B-Thinking, vLLM)
 
@@ -74,7 +74,7 @@ python pass2_enhancement.py \
 ```
 
 Fuses the three caption streams per segment. Trust hierarchy:
-Omni > Vision > Audio (paper §3.2).
+Omni > Vision > Audio (paper §2.2).
 Output: one JSON per video with enhanced per-segment captions.
 
 ### Step 3 — Narrative Unification (Qwen3.5-27B, vLLM)

@@ -6,7 +6,7 @@ Each adapter defines:
 3. How to run the forward/generate pass
 4. Any dtype/device fixes needed
 
-Paper reference: §4.2 + Appendix L (app:eval-impl)
+Paper reference: §4.3 + Appendix J (app:eval-impl)
 "Hidden State Extraction" paragraph — forward hooks registered on decoder
 layers via register_forward_hook(). Layer access pattern varies by architecture
 (e.g., model.thinker.model.layers for the Qwen family). Each extraction
@@ -174,7 +174,7 @@ class OlaAdapter(BaseModelAdapter):
 
         context = self._format_question(sample)
 
-        # Load video frames (50 uniformly sampled per paper Appendix L)
+        # Load video frames (50 uniformly sampled per paper Appendix J)
         vr = VideoReader(video_path, ctx=cpu(0))
         total = len(vr)
         frame_idx = np.linspace(0, total - 1, min(50, total), dtype=int).tolist()

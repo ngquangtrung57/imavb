@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PGLA hyperparameter sweep with 5-fold stratified CV (§5 + App F).
+"""PGLA hyperparameter sweep with 5-fold stratified CV (§5 + App G).
 
 Loads probe outputs produced by train_probes.py, then exhaustively evaluates
 all 162 parameter configurations (3×2×3×3×3) using 5-fold stratified CV on
@@ -42,7 +42,7 @@ from config import MODELS, OUTPUT_DIR, RANDOM_STATE
 
 MISLEADING_CORRECT: dict[str, str] = {"misleading_vision": "E", "misleading_audio": "F"}
 
-# ── Hyperparameter grid (paper App F) ────────────────────────────────────────
+# ── Hyperparameter grid (paper App G) ────────────────────────────────────────
 GRID: dict[str, list[float | int]] = {
     "gamma": [0.5, 1.0, 2.0],        # sigmoid steepness γ
     "probe_power": [1.0, 2.0],        # probe confidence power p
@@ -202,7 +202,7 @@ def run_cv_sweep(
     For each fold: tune on 4 folds, evaluate best config on held-out fold.
     Returns mean test performance across folds for each config.
 
-    Protocol (App F):
+    Protocol (App G):
         - Probe is already trained on fixed 25% training set.
         - CV is on the 75% eval set only.
         - Each fold: select config maximising balanced_acc on 4/5 tune folds,
@@ -333,7 +333,7 @@ def _compute_pareto(cv_results: list[dict]) -> list[dict]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="PGLA 162-config sweep with 5-fold CV (§5 + App F)"
+        description="PGLA 162-config sweep with 5-fold CV (§5 + App G)"
     )
     parser.add_argument(
         "--model",

@@ -1,5 +1,5 @@
 """
-LLM-as-Judge verification for A5 (BinExplain) outputs (Appendix E).
+LLM-as-Judge verification for A5 (BinExplain) outputs (Appendix F).
 
 Evaluates whether each model's TRUE/FALSE prediction and its accompanying
 explanation are both correct, using Qwen3.5-27B in non-thinking mode via
@@ -685,7 +685,7 @@ def _generate_markdown(
     n_parse = sum(1 for r in all_results if r.get("status") == "parse_error")
 
     lines = [
-        "# LLM-as-Judge Results (Appendix E)",
+        "# LLM-as-Judge Results (Appendix F)",
         "",
         f"**Judge model:** {JUDGE_MODEL} (non-thinking mode, AsyncLLMEngine)",
         f"**Run timestamp:** {run_timestamp}",
@@ -757,7 +757,7 @@ def _generate_markdown(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="LLM-as-Judge verification for A5 binary_explain outputs (Appendix E)"
+        description="LLM-as-Judge verification for A5 binary_explain outputs (Appendix F)"
     )
     parser.add_argument(
         "--models",
@@ -793,7 +793,7 @@ def main() -> None:
     run_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     print("=" * 60)
-    print("  LLM-as-Judge: Binary Explain Verification (Appendix E)")
+    print("  LLM-as-Judge: Binary Explain Verification (Appendix F)")
     print("=" * 60)
     print(f"  Judge model:      {JUDGE_MODEL}")
     print(f"  Tensor parallel:  {args.tp} GPUs")

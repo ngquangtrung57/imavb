@@ -14,7 +14,7 @@ Misleading variants copy the standard question and swap exactly one premise
 detail; the correct answer is E or F (auto-appended to every choice set).
 
 Model: Qwen3.5-27B via vLLM AsyncLLMEngine
-Paper: §3.3 "Question Design"
+Paper: §2.3 "Question Design"
 """
 
 import os
@@ -51,13 +51,13 @@ GEN_MAX_TOKENS = 8000
 # Concurrency
 NUM_WORKERS = 64
 
-# Auto-appended choices for misleading questions (paper §3.3)
+# Auto-appended choices for misleading questions (paper §2.3)
 CHOICE_E = "The visual detail in the question is incorrect"
 CHOICE_F = "The audio detail in the question is incorrect"
 
 
 ###################################################################################################
-# Categories (paper §3.3)
+# Categories (paper §2.3)
 ###################################################################################################
 
 # 9 vision misleading subcategories
@@ -94,7 +94,7 @@ QUESTION_FOCUS_CATEGORIES = [
 
 
 ###################################################################################################
-# Prompts -- Generator (paper §3.3 and Appendix H)
+# Prompts -- Generator (paper §2.3 and Appendix I)
 ###################################################################################################
 
 SYSTEM_PROMPT = """\
@@ -525,7 +525,7 @@ async def process_video(
 
     # Build output record.
     # vision_choices and audio_choices each have A-D from the model; E and F are auto-appended
-    # per paper §3.3: "options E and F are appended automatically."
+    # per paper §2.3: "options E and F are appended automatically."
     output_data = {
         "video_id": video_id,
         "video_duration": video_info.get("video_duration", 0),

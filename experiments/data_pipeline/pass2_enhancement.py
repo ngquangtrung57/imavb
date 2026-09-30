@@ -5,7 +5,7 @@ IMAVB Annotation Pipeline - Pass 2: Detail Enhancement
 Qwen3.5-27B integrates all three caption streams (Omni/Vision/Audio) from Pass 1
 into a unified enhanced caption per 10-second segment.
 
-Trust hierarchy (paper Section 3.2): Omni > Vision > Audio
+Trust hierarchy (paper §2.2): Omni > Vision > Audio
 - Omni captions capture both modalities accurately (PRIMARY source of truth)
 - Vision captions provide reliable visual detail
 - Audio captions may contain errors (inferred visual events without visual context)
@@ -58,7 +58,7 @@ NUM_WORKERS = 128
 
 
 ###################################################################################################
-# Enhancement Prompt - paper Appendix H (ground truth)
+# Enhancement Prompt - paper Appendix I (ground truth)
 # Trust hierarchy: Omni (Primary) > Vision > Audio
 ###################################################################################################
 

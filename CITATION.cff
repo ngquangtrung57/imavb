@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+message: "If you use IMAVB or this code, please cite the paper below."
+title: "Senses Wide Shut: A Representation-Action Gap in Omnimodal LLMs"
+repository-code: "https://github.com/ngquangtrung57/imavb"
+url: "https://ngquangtrung57.github.io/imavb-page/"
+license: Apache-2.0
+authors:
+  - family-names: "Nguyen Quang"
+    given-names: "Trung"
+  - family-names: "Gao"
+    given-names: "Yiming"
+  - family-names: "Pu"
+    given-names: "Fanyi"
+  - family-names: "Zhang"
+    given-names: "Kaichen"
+  - family-names: "Sun"
+    given-names: "Shuo"
+  - family-names: "Liu"
+    given-names: "Ziwei"
+preferred-citation:
+  type: conference-paper
+  title: "Senses Wide Shut: A Representation-Action Gap in Omnimodal LLMs"
+  collection-title: "Advances in Neural Information Processing Systems (NeurIPS)"
+  year: 2026
+  url: "https://arxiv.org/abs/2605.13737"
+  authors:
+    - family-names: "Nguyen Quang"
+      given-names: "Trung"
+    - family-names: "Gao"
+      given-names: "Yiming"
+    - family-names: "Pu"
+      given-names: "Fanyi"
+    - family-names: "Zhang"
+      given-names: "Kaichen"
+    - family-names: "Sun"
+      given-names: "Shuo"
+    - family-names: "Liu"
+      given-names: "Ziwei"

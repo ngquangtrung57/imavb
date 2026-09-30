@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Linear Probing Analysis for IMAVB paper (§4.2 — The Know-But-Don't-Act Gap).
+Linear Probing Analysis for IMAVB paper (§4.3 — The Representation–Action Gap).
 
 Trains a logistic regression probe at each transformer layer to predict whether
 a hidden state comes from a standard or misleading input. Uses 4-fold stratified
@@ -148,7 +148,7 @@ def run_tfidf_baseline(questions: list[str], y: np.ndarray, groups: np.ndarray) 
     """
     TF-IDF text-only baseline. TfidfVectorizer fit per fold to avoid leakage.
 
-    Per §4.2: TfidfVectorizer(max_features=5000), fit inside each fold.
+    Per §4.3: TfidfVectorizer(max_features=5000), fit inside each fold.
     """
     sgkf = StratifiedGroupKFold(n_splits=N_FOLDS, shuffle=True, random_state=RANDOM_STATE)
     questions_arr = np.array(questions)
@@ -341,7 +341,7 @@ def print_summary(all_results: dict) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Linear probing analysis for IMAVB §4.2 (Table 3)."
+        description="Linear probing analysis for IMAVB §4.3 (Table 4)."
     )
     parser.add_argument(
         "--model",

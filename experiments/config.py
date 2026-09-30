@@ -8,7 +8,7 @@ All paths are placeholders — set them before running any script.
 HIDDEN_STATES_ROOT = "<SET_PATH>/hidden_states"            # .pt files per model per split
 BASELINE_OUTPUT_ROOT = "<SET_PATH>/lmms_eval_output/catA"  # A1 JSONL baseline results
 LM_WEIGHTS_ROOT = "<SET_PATH>/lm_weights"                  # norm_weights.pt + lm_head_weights.pt per model
-DATASET_NAME = "<ANONYMOUS_HF_DATASET>"                    # HuggingFace dataset (gated)
+DATASET_NAME = "ngqtrung/IMAVB"                             # HuggingFace dataset (public)
 OUTPUT_DIR = "<SET_PATH>/analysis_outputs"                 # Where results are saved
 
 # ── Models ────────────────────────────────────────────────────────────────
@@ -44,7 +44,7 @@ SHORT_SPLIT_NAMES = {
     "misleading_audio": "mis_a",
 }
 
-# ── Per-model peak probe layers (from 4-fold CV probing, §4.2) ───────────
+# ── Per-model peak probe layers (from 4-fold CV probing, §4.3) ───────────
 PEAK_LAYERS = {
     "baichuan_omni": 2,
     "minicpm_o": 17,

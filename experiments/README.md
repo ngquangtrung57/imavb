@@ -1,5 +1,5 @@
 # IMAVB — Experiment Scripts
 
-This directory contains the analysis and representational experiment scripts for the IMAVB benchmark paper. These scripts implement the internal probing, logit lens, PGLA, and LLM-as-Judge experiments described in Sections 4–6 and Appendices D–L.
+This directory contains the analysis and representational experiment scripts for the IMAVB benchmark paper. These scripts implement the internal probing, logit lens, PGLA, and LLM-as-Judge experiments described in Sections 4–5 and Appendices F, G, J and L of the paper.
 
-**Note:** A1–A7 prompt interventions is handled by the [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval) framework with custom IMAVB task definitions. The benchmark code will be released and merged into the public lmms-eval repository upon acceptance.
+**Note:** The behavioural evaluation (prompt variants A1–A7) runs in [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval) with IMAVB task definitions, which are not part of this directory.

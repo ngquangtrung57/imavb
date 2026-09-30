@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Train MLP and linear probes for PGLA (§5 + App F of the paper).
+"""Train MLP and linear probes for PGLA (§5 + App G of the paper).
 
 Workflow:
     1. Load hidden states at the peak probe layer l* for a given model.
@@ -279,7 +279,7 @@ def train_probes(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Train PGLA probes for a given model (§5 + App F)"
+        description="Train PGLA probes for a given model (§5 + App G)"
     )
     parser.add_argument(
         "--model",

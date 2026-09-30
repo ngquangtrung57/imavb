@@ -4,7 +4,7 @@ Loads a model, runs a forward pass on each benchmark sample, captures
 last-token hidden states from every decoder layer via forward hooks
 (register_forward_hook), and saves .pt files.
 
-Paper reference: §4.2 + Appendix L (app:eval-impl)
+Paper reference: §4.3 + Appendix J (app:eval-impl)
   "Hidden State Extraction" — forward hooks on decoder layers, per-sample
   tensor of shape (num_layers, hidden_dim), 50 uniformly sampled frames,
   full-length audio resampled to 16 kHz mono.
@@ -106,7 +106,7 @@ def get_video_path(sample: dict) -> str:
 def save_lm_head_weights(adapter, output_dir: str) -> None:
     """Save final norm + lm_head weights for logit lens analysis.
 
-    These are needed for logit lens post-hoc analysis (Appendix L).
+    These are needed for logit lens post-hoc analysis (Appendix J).
     Saved once per model run to {output_dir}/norm_weights.pt and
     {output_dir}/lm_head_weights.pt.
     """
@@ -164,7 +164,7 @@ def save_lm_head_weights(adapter, output_dir: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="IMAVB hidden state extraction — §4.2 + Appendix L"
+        description="IMAVB hidden state extraction — §4.3 + Appendix J"
     )
     parser.add_argument(
         "--model",
@@ -207,7 +207,7 @@ def main() -> None:
         type=int,
         default=50,
         help=(
-            "Maximum video frames to sample (default: 50 per paper Appendix L "
+            "Maximum video frames to sample (default: 50 per paper Appendix J "
             "'50 uniformly sampled video frames')"
         ),
     )

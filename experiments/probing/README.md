@@ -19,7 +19,7 @@ Trains logistic regression probes on hidden states to detect misleading inputs.
 - **Audio probe**: all standard (1,000) vs mis_a (500) at l\* — 1:2 class ratio
 - **TF-IDF baseline**: `TfidfVectorizer(max_features=5000)` fit per fold, vision and audio questions separately
 
-**Expected baseline values (paper §4.2):** TF-IDF ~73.4% (vision), ~71.4% (audio).
+**Expected baseline values (paper §4.3):** TF-IDF ~73.4% (vision), ~71.4% (audio).
 
 **Usage:**
 ```bash
@@ -40,7 +40,7 @@ can be resumed if interrupted.
 
 ### `residualized_probing.py`
 
-Residualized probe analysis (Appendix — Table 6). Projects out text-predictive
+Residualized probe analysis (Appendix L, Table 18). Projects out text-predictive
 features via Ridge regression + orthogonal projection (nested 4-fold CV) then
 retrains the probe on residual hidden states to confirm genuine cross-modal signal.
 

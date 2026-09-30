@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Logit Lens analysis (§4.2): project each layer's hidden state through the final
+Logit Lens analysis (§4.3): project each layer's hidden state through the final
 LM head (with RMSNorm) to obtain P(correct answer token) at each layer.
 
 Equations from the paper:

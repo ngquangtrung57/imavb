@@ -6,7 +6,7 @@ for 10-second video segments.
 
 No explicit text prompt is used. The Captioner model receives only the
 audio segment with the chat template scaffold and generates a caption
-by default (see IMAVB paper Appendix H, "Level-1 Audio Caption").
+by default (see IMAVB paper Appendix I, "Level-1 Audio Caption").
 
 Audio is extracted at 16kHz mono from each 10s segment.
 
@@ -387,7 +387,7 @@ def main(args: argparse.Namespace) -> None:
                         )
 
                         # No explicit text prompt: Captioner model generates caption from audio only.
-                        # (IMAVB paper Appendix H: "No explicit text prompt is used.")
+                        # (IMAVB paper Appendix I: "No explicit text prompt is used.")
                         messages = [
                             {
                                 "role": "user",
