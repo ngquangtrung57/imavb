@@ -40,7 +40,7 @@ can be resumed if interrupted.
 
 ### `residualized_probing.py`
 
-Residualized probe analysis (Appendix L, Table 18). Projects out text-predictive
+Residualized probe analysis (Appendix L, Table 16). Projects out text-predictive
 features via Ridge regression + orthogonal projection (nested 4-fold CV) then
 retrains the probe on residual hidden states to confirm genuine cross-modal signal.
 

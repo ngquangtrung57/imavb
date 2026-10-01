@@ -12,7 +12,7 @@ Approach (nested 4-fold CV to avoid leakage):
     3. Train probe on residualized TRAIN, evaluate on residualized TEST
 
 Also computes:
-  - Original probe accuracy (sanity check — should match paper Table 6)
+  - Original probe accuracy (sanity check — should match paper Table 16)
   - TF-IDF text baseline (should match paper's 73.4% / 71.4%)
   - Sentence-BERT text baseline (stronger text control)
   - Bootstrap significance tests (probe > text, residualized > chance)
@@ -648,7 +648,7 @@ def analyze_model(
 # ── Main ─────────────────────────────────────────────────────────────────
 
 def print_summary_table(all_results: dict):
-    """Print a summary table matching Table 6 format."""
+    """Print a summary table matching Table 16 format."""
     print("\n" + "=" * 100)
     print("SUMMARY TABLE — Residualized Probe Analysis")
     print("=" * 100)
@@ -671,7 +671,7 @@ def print_summary_table(all_results: dict):
     print("=" * 100)
 
     print("\nKey:")
-    print("  Orig(V/A)  = Original hidden-state probe (should match paper Table 6)")
+    print("  Orig(V/A)  = Original hidden-state probe (should match paper Table 16)")
     print("  SBERT(V/A) = Sentence-BERT text-only baseline (stronger than TF-IDF)")
     print("  Resid(V/A) = Residualized probe (text-predictive component removed)")
     print("  Resid > 50% = genuine multimodal signal survives residualization")
