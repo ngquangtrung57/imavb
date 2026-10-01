@@ -20,10 +20,10 @@
 
 <p align="center"><img src="assets/teaser.jpg" width="88%" alt="The Representation–Action Gap: the model perceives the scene correctly, encodes that the text premise is wrong, and still answers as if it were true."></p>
 
-> **TL;DR.** Ask an omnimodal LLM about a movie scene, but slip one false detail into the question.
-> Its hidden states flag the mismatch (linear probes decode it at up to **86%**), yet it rejects the
-> false premise in at most **16.2%** of vision cases and **6.6%** of audio cases. The models *know*.
-> They do not *say*. The bottleneck is acting on the signal, not encoding it.
+> **TL;DR.** We ask omnimodal LLMs about movie scenes, and some questions change one visual or audio detail.
+> Linear probes recover the false premise from the hidden states with up to **86%** accuracy, yet seven of eight
+> open-source models reject it in at most **16.2%** of vision cases and **6.6%** of audio cases. The models encode
+> the mismatch, but they rarely act on it.
 
 ## Highlights
 
@@ -95,7 +95,7 @@ print(imavb[0]["question"], imavb[0]["correct_answer"])   # video file: imavb[0]
 
 ## Results at a glance
 
-| Model | Probe knows (vision) | Model says (rejects false vision premise) | Probe knows (audio) | Model says (audio) |
+| Model | Probe accuracy (vision) | Rejection rate (vision) | Probe accuracy (audio) | Rejection rate (audio) |
 |---|---:|---:|---:|---:|
 | OLA | 84.0 | 6.8 | 77.8 | 0.0 |
 | OmniVinci | 84.4 | 6.6 | 78.8 | 0.0 |
