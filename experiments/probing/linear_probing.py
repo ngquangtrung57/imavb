@@ -9,7 +9,7 @@ cross-validation over all 2,000 samples per model.
 Also trains modality-specific probes (vision-only, audio-only) and computes a
 TF-IDF text-only baseline per fold to establish the text-confound ceiling.
 
-Results match Table 4 (tab:know-gap) in the paper.
+Results match Table 3 (tab:know-gap) in the paper.
 
 Usage:
     python linear_probing.py --model qwen2_5_omni
@@ -292,9 +292,9 @@ def analyze_model(model_name: str) -> dict:
 # ── Summary printing ───────────────────────────────────────────────────────
 
 def print_summary(all_results: dict) -> None:
-    """Print summary table matching Table 4 (tab:know-gap) format."""
+    """Print summary table matching Table 3 (tab:know-gap) format."""
     print("\n" + "=" * 95)
-    print("LINEAR PROBING SUMMARY — Table 4 (tab:know-gap)")
+    print("LINEAR PROBING SUMMARY — Table 3 (tab:know-gap)")
     print("=" * 95)
     header = (
         f"{'Model':<22} {'Peak L':>7} {'HS Probe(V)':>12} {'HS Probe(A)':>12} "
@@ -341,7 +341,7 @@ def print_summary(all_results: dict) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Linear probing analysis for IMAVB §4.3 (Table 4)."
+        description="Linear probing analysis for IMAVB §4.3 (Table 3)."
     )
     parser.add_argument(
         "--model",
