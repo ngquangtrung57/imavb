@@ -5,7 +5,7 @@ Evaluates whether each model's TRUE/FALSE prediction and its accompanying
 explanation are both correct, using Qwen3.5-27B in non-thinking mode via
 vLLM AsyncLLMEngine.
 
-Metrics (Table tab:judge in paper):
+Metrics (Table 9 in the paper):
   P-Acc  — prediction accuracy (same as A2 binary accuracy)
   E-Acc  — explanation accuracy (judge says reasoning is correct)
   R+R    — both prediction and explanation correct
@@ -691,7 +691,7 @@ def _generate_markdown(
         f"**Run timestamp:** {run_timestamp}",
         f"**Total entries:** {n_total} (success: {n_success}, parse_error: {n_parse}, error: {n_errors})",
         "",
-        "## Per-Model Summary (paper Table tab:judge)",
+        "## Per-Model Summary (paper Table 9)",
         "",
         "| Model | Total | P-Acc | E-Acc | R+R | R+W | Errors | Parse Errors |",
         "|-------|------:|:-----:|:-----:|:---:|:---:|-------:|:------------:|",

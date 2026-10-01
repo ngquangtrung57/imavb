@@ -4,8 +4,8 @@ Logit Lens analysis (§4.3): project each layer's hidden state through the final
 LM head (with RMSNorm) to obtain P(correct answer token) at each layer.
 
 Equations from the paper:
-    z_l = W_unembed * h_l                          (Eq. 1)
-    P_l(correct) = softmax(z_l)[correct_token]     (Eq. 2)
+    z_l = W_unembed * h_l                          (Eq. 3)
+    P_l(correct) = softmax(z_l)[correct_token]     (Eq. 4)
 
 W_unembed is the LM head weight matrix. h_l is first passed through a final
 RMSNorm (x / sqrt(mean(x^2) + eps) * weight, eps=1e-6) before projection.

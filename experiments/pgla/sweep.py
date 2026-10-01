@@ -5,7 +5,7 @@ Loads probe outputs produced by train_probes.py, then exhaustively evaluates
 all 162 parameter configurations (3×2×3×3×3) using 5-fold stratified CV on
 the 75% evaluation set.
 
-Paper formula (Eq. 1–2):
+Paper formula (Eq. 5–6):
     g = P_mis^p                         # confidence gate
     Δ = max(L_A..D) - max(L_E, L_F)     # content-vs-rejection gap
     L'_E = L_E + σ(γ(g - α)) * (s*Δ + δ) - β/2
@@ -72,7 +72,7 @@ def apply_intervention(
     gap_scale: float,
     fixed_boost: float,
 ) -> dict[str, float]:
-    """Apply PGLA confidence-gated logit adjustment (Eq. 1–2 of the paper).
+    """Apply PGLA confidence-gated logit adjustment (Eq. 5–6 of the paper).
 
     Args:
         choice_logits: Original logits dict {A: float, ..., F: float}.
