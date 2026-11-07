@@ -78,8 +78,8 @@ imavb/
         └── verify_binary_explain.py     LLM-as-judge over the binary-with-explanation outputs
 ```
 
-The behavioural evaluation (prompt variants A1–A7) runs in [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval),
-and the analysis scripts here read its outputs and the stored hidden states.
+The behavioural evaluation (prompt variants A1–A7) runs in [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval)
+(see [Evaluate with lmms-eval](#evaluate-with-lmms-eval)), and the analysis scripts here read its outputs and the stored hidden states.
 
 ## The dataset
 
@@ -92,6 +92,37 @@ from datasets import load_dataset
 imavb = load_dataset("ngqtrung/IMAVB", split="misleading_vision")
 print(imavb[0]["question"], imavb[0]["correct_answer"])   # video file: imavb[0]["video"]
 ```
+
+## Evaluate with lmms-eval
+
+IMAVB is available as a task in [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval)
+([PR #1646](https://github.com/EvolvingLMMs-Lab/lmms-eval/pull/1646); until it is merged, install lmms-eval from the `feat/imavb` branch).
+The task follows the paper's default protocol: the A1 prompt, options in fixed order, greedy decoding and 16 new tokens.
+
+| Task | Split | Correct answer |
+|---|---|---|
+| `imavb_standard_vision` | standard premise, vision query | A–D |
+| `imavb_standard_audio` | standard premise, audio query | A–D |
+| `imavb_misleading_vision` | one visual premise detail swapped | E |
+| `imavb_misleading_audio` | one audio premise detail swapped | F |
+| `imavb` (group) | all four | mean of the four accuracies = balanced accuracy (Bal) |
+
+```bash
+pip install "lmms_eval[audio] @ git+https://github.com/EvolvingLMMs-Lab/lmms-eval.git@feat/imavb"
+
+python -m lmms_eval \
+    --model qwen2_5_omni --force_simple \
+    --model_args pretrained=Qwen/Qwen2.5-Omni-7B,attn_implementation=sdpa \
+    --tasks imavb \
+    --batch_size 1 \
+    --log_samples \
+    --output_path ./logs/
+```
+
+The first run downloads the clips (10.9 GB) and links them to `$HF_HOME/IMAVB`. The model must receive the audio
+track of each clip: with `qwen2_5_omni`, use the simple adapter (`--force_simple`). For long clips on an 80 GB GPU,
+set `MODEL_SEQ_LEN=32768` to lower the video token budget. The prompt variants A2–A7 and the shuffled-option runs
+of the paper are not part of the lmms-eval task.
 
 ## Results at a glance
 
